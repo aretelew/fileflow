@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import type { FileItem } from "./home-page"
+import type { FileItem } from "../pages/Home.tsx"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
@@ -24,12 +24,15 @@ import { Card, CardContent } from "@/components/ui/card"
 interface FileListProps {
     files: FileItem[]
     onDeleteFile: (id: string) => void
+    onEditFile?: (id: string, newName: string) => void
 }
 
-export function FileList({ files, onDeleteFile }: FileListProps) {
+export function FileList({ files, onDeleteFile, onEditFile }: FileListProps) {
     const [searchTerm, setSearchTerm] = useState("")
     const [sortField, setSortField] = useState<keyof FileItem>("uploadDate")
     const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
+    const [editingFile, setEditingFile] = useState<string | null>(null)
+    const [editValue, setEditValue] = useState("")
 
     // Format file size
     const formatFileSize = (bytes: number): string => {
@@ -116,6 +119,19 @@ export function FileList({ files, onDeleteFile }: FileListProps) {
         document.body.removeChild(link)
     }
 
+    const handleEditStart = (file: FileItem) => {
+        setEditingFile(file.id)
+        setEditValue(file.name)
+    }
+
+    const handleEditSubmit = (id: string) => {
+        if (onEditFile && editValue.trim()) {
+            onEditFile(id, editValue.trim())
+        }
+        setEditingFile(null)
+        setEditValue("")
+    }
+
     return (
         <div className="space-y-4">
             <div className="flex items-center gap-4">
@@ -142,7 +158,7 @@ export function FileList({ files, onDeleteFile }: FileListProps) {
                     </CardContent>
                 </Card>
             ) : (
-                <div className="rounded-md border">
+                <div className="rounded-md border max-h-[50vh] overflow-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -175,32 +191,56 @@ export function FileList({ files, onDeleteFile }: FileListProps) {
                                             (sortDirection === "asc" ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />)}
                                     </div>
                                 </TableHead>
-                                <TableHead className="w-[70px]"></TableHead>
+                                <TableHead className="w-[50px]"></TableHead>
+                                <TableHead className="w-[50px]"></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {filteredAndSortedFiles.map((file) => (
                                 <TableRow key={file.id}>
                                     <TableCell className="p-2">{getFileIcon(file.type)}</TableCell>
-                                    <TableCell className="font-medium">{file.name}</TableCell>
+                                    <TableCell className="font-medium">
+                                        {editingFile === file.id ? (
+                                            <Input
+                                                value={editValue}
+                                                onChange={(e) => setEditValue(e.target.value)}
+                                                onBlur={() => handleEditSubmit(file.id)}
+                                                onKeyDown={(e) => e.key === "Enter" && handleEditSubmit(file.id)}
+                                                autoFocus
+                                            />
+                                        ) : (
+                                            file.name
+                                        )}
+                                    </TableCell>
                                     <TableCell>{getFileTypeBadge(file.type)}</TableCell>
                                     <TableCell>{formatFileSize(file.size)}</TableCell>
                                     <TableCell>{formatDate(file.uploadDate)}</TableCell>
                                     <TableCell>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 cursor-pointer"
+                                            onClick={() => handleDownload(file)}
+                                        >
+                                            <Download className="h-4 w-4" />
+                                            <span className="sr-only">Download</span>
+                                        </Button>
+                                    </TableCell>
+                                    <TableCell>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 cursor-pointer">
                                                     <MoreVertical className="h-4 w-4" />
                                                     <span className="sr-only">Actions</span>
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={() => handleDownload(file)}>
-                                                    <Download className="mr-2 h-4 w-4" />
-                                                    <span>Download</span>
+                                                <DropdownMenuItem onClick={() => handleEditStart(file)} className="cursor-pointer">
+                                                    <FileText className="mr-2 h-4 w-4" />
+                                                    <span>Rename</span>
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
-                                                    className="text-destructive focus:text-destructive"
+                                                    className="text-destructive focus:text-destructive cursor-pointer"
                                                     onClick={() => onDeleteFile(file.id)}
                                                 >
                                                     <Trash2 className="mr-2 h-4 w-4" />
