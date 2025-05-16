@@ -1,18 +1,16 @@
-"use client"
-
-import { useCallback, useRef } from "react"
-import { useDropzone } from "react-dropzone"
-import type { FileItem } from "../pages/Home.tsx"
-import { Upload } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
-import { v4 as uuidv4 } from "uuid"
+import {useCallback, useRef} from "react"
+import {useDropzone} from "react-dropzone"
+import type {FileItem} from "../pages/Dashboard.tsx"
+import {Upload} from "lucide-react"
+import {Button} from "@/components/ui/button"
+import {cn} from "@/lib/utils"
+import {v4 as uuidv4} from "uuid"
 
 interface FileUploaderProps {
     onFilesUploaded: (files: FileItem[]) => void
 }
 
-export function FileUploader({ onFilesUploaded }: FileUploaderProps) {
+export function FileUploader({onFilesUploaded}: FileUploaderProps) {
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     const onDrop = useCallback(
@@ -32,7 +30,7 @@ export function FileUploader({ onFilesUploaded }: FileUploaderProps) {
         [onFilesUploaded],
     )
 
-    const { getRootProps, getInputProps, isDragActive, isDragAccept, isDragReject } = useDropzone({
+    const {getRootProps, getInputProps, isDragActive, isDragAccept, isDragReject} = useDropzone({
         onDrop,
         accept: {
             "image/*": [],
@@ -57,9 +55,9 @@ export function FileUploader({ onFilesUploaded }: FileUploaderProps) {
                     isDragReject && "border-red-500/70 bg-red-500/5",
                 )}
             >
-                <input {...getInputProps()} ref={fileInputRef} />
+                <input {...getInputProps()} ref={fileInputRef}/>
                 <div className="flex flex-col items-center justify-center gap-2">
-                    <Upload className="h-10 w-10 text-muted-foreground" />
+                    <Upload className="h-10 w-10 text-muted-foreground"/>
                     <h3 className="font-medium text-lg">
                         {isDragActive
                             ? isDragAccept

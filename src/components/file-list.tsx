@@ -1,11 +1,9 @@
-"use client"
-
-import { useState } from "react"
-import type { FileItem } from "../pages/Home.tsx"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import {useState} from "react"
+import type {FileItem} from "../pages/Dashboard.tsx"
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "@/components/ui/table"
+import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger} from "@/components/ui/dropdown-menu"
+import {Button} from "@/components/ui/button"
+import {Input} from "@/components/ui/input"
 import {
     Download,
     Trash2,
@@ -18,8 +16,8 @@ import {
     SortAsc,
     SortDesc,
 } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
+import {Badge} from "@/components/ui/badge"
+import {Card, CardContent} from "@/components/ui/card"
 
 interface FileListProps {
     files: FileItem[]
@@ -27,14 +25,13 @@ interface FileListProps {
     onEditFile?: (id: string, newName: string) => void
 }
 
-export function FileList({ files, onDeleteFile, onEditFile }: FileListProps) {
+export function FileList({files, onDeleteFile, onEditFile}: FileListProps) {
     const [searchTerm, setSearchTerm] = useState("")
     const [sortField, setSortField] = useState<keyof FileItem>("uploadDate")
     const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
     const [editingFile, setEditingFile] = useState<string | null>(null)
     const [editValue, setEditValue] = useState("")
 
-    // Format file size
     const formatFileSize = (bytes: number): string => {
         if (bytes === 0) return "0 Bytes"
 
@@ -45,7 +42,6 @@ export function FileList({ files, onDeleteFile, onEditFile }: FileListProps) {
         return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
     }
 
-    // Format date
     const formatDate = (date: Date): string => {
         return new Intl.DateTimeFormat("en-US", {
             year: "numeric",
@@ -56,15 +52,13 @@ export function FileList({ files, onDeleteFile, onEditFile }: FileListProps) {
         }).format(date)
     }
 
-    // Get file icon based on type
     const getFileIcon = (type: string) => {
-        if (type.startsWith("image/")) return <FileImage className="h-5 w-5" />
-        if (type.startsWith("text/")) return <FileText className="h-5 w-5" />
-        if (type.includes("zip") || type.includes("compressed")) return <FileArchive className="h-5 w-5" />
-        return <FileIcon className="h-5 w-5" />
+        if (type.startsWith("image/")) return <FileImage className="h-5 w-5"/>
+        if (type.startsWith("text/")) return <FileText className="h-5 w-5"/>
+        if (type.includes("zip") || type.includes("compressed")) return <FileArchive className="h-5 w-5"/>
+        return <FileIcon className="h-5 w-5"/>
     }
 
-    // Get file type badge
     const getFileTypeBadge = (type: string) => {
         let label = type.split("/")[0]
         label = label.charAt(0).toUpperCase() + label.slice(1)
@@ -78,7 +72,6 @@ export function FileList({ files, onDeleteFile, onEditFile }: FileListProps) {
         return <Badge variant={variant}>{label}</Badge>
     }
 
-    // Handle sort
     const handleSort = (field: keyof FileItem) => {
         if (sortField === field) {
             setSortDirection(sortDirection === "asc" ? "desc" : "asc")
@@ -88,7 +81,6 @@ export function FileList({ files, onDeleteFile, onEditFile }: FileListProps) {
         }
     }
 
-    // Filter and sort files
     const filteredAndSortedFiles = [...files]
         .filter((file) => file.name.toLowerCase().includes(searchTerm.toLowerCase()))
         .sort((a, b) => {
@@ -102,22 +94,21 @@ export function FileList({ files, onDeleteFile, onEditFile }: FileListProps) {
                 return sortDirection === "asc" ? a.size - b.size : b.size - a.size
             }
 
-            // Default string comparison for other fields
             const aValue = String(a[sortField]).toLowerCase()
             const bValue = String(b[sortField]).toLowerCase()
 
             return sortDirection === "asc" ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue)
         })
 
-    // Download file
     const handleDownload = (file: FileItem) => {
-        const link = document.createElement("a")
-        link.href = file.url
-        link.download = file.name
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-    }
+        const link = document.createElement("a");
+        link.href = file.url;
+        // link.target = "_blank"; // Optional: open in a new tab
+        link.download = file.name; // Suggests the original file name for download
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
     const handleEditStart = (file: FileItem) => {
         setEditingFile(file.id)
@@ -136,7 +127,7 @@ export function FileList({ files, onDeleteFile, onEditFile }: FileListProps) {
         <div className="space-y-4">
             <div className="flex items-center gap-4">
                 <div className="relative flex-1">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"/>
                     <Input
                         type="search"
                         placeholder="Search files..."
@@ -150,7 +141,7 @@ export function FileList({ files, onDeleteFile, onEditFile }: FileListProps) {
             {filteredAndSortedFiles.length === 0 ? (
                 <Card>
                     <CardContent className="flex flex-col items-center justify-center py-10 text-center">
-                        <FileIcon className="h-10 w-10 text-muted-foreground mb-3" />
+                        <FileIcon className="h-10 w-10 text-muted-foreground mb-3"/>
                         <h3 className="text-lg font-medium">No files found</h3>
                         <p className="text-sm text-muted-foreground mt-1">
                             {files.length === 0 ? "Upload some files to get started" : "Try a different search term"}
@@ -167,28 +158,32 @@ export function FileList({ files, onDeleteFile, onEditFile }: FileListProps) {
                                     <div className="flex items-center gap-1">
                                         Name
                                         {sortField === "name" &&
-                                            (sortDirection === "asc" ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />)}
+                                            (sortDirection === "asc" ? <SortAsc className="h-4 w-4"/> :
+                                                <SortDesc className="h-4 w-4"/>)}
                                     </div>
                                 </TableHead>
                                 <TableHead className="cursor-pointer" onClick={() => handleSort("type")}>
                                     <div className="flex items-center gap-1">
                                         Type
                                         {sortField === "type" &&
-                                            (sortDirection === "asc" ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />)}
+                                            (sortDirection === "asc" ? <SortAsc className="h-4 w-4"/> :
+                                                <SortDesc className="h-4 w-4"/>)}
                                     </div>
                                 </TableHead>
                                 <TableHead className="cursor-pointer" onClick={() => handleSort("size")}>
                                     <div className="flex items-center gap-1">
                                         Size
                                         {sortField === "size" &&
-                                            (sortDirection === "asc" ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />)}
+                                            (sortDirection === "asc" ? <SortAsc className="h-4 w-4"/> :
+                                                <SortDesc className="h-4 w-4"/>)}
                                     </div>
                                 </TableHead>
                                 <TableHead className="cursor-pointer" onClick={() => handleSort("uploadDate")}>
                                     <div className="flex items-center gap-1">
                                         Uploaded
                                         {sortField === "uploadDate" &&
-                                            (sortDirection === "asc" ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />)}
+                                            (sortDirection === "asc" ? <SortAsc className="h-4 w-4"/> :
+                                                <SortDesc className="h-4 w-4"/>)}
                                     </div>
                                 </TableHead>
                                 <TableHead className="w-[50px]"></TableHead>
@@ -222,7 +217,7 @@ export function FileList({ files, onDeleteFile, onEditFile }: FileListProps) {
                                             className="h-8 w-8 cursor-pointer"
                                             onClick={() => handleDownload(file)}
                                         >
-                                            <Download className="h-4 w-4" />
+                                            <Download className="h-4 w-4"/>
                                             <span className="sr-only">Download</span>
                                         </Button>
                                     </TableCell>
@@ -230,20 +225,21 @@ export function FileList({ files, onDeleteFile, onEditFile }: FileListProps) {
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <Button variant="ghost" size="icon" className="h-8 w-8 cursor-pointer">
-                                                    <MoreVertical className="h-4 w-4" />
+                                                    <MoreVertical className="h-4 w-4"/>
                                                     <span className="sr-only">Actions</span>
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={() => handleEditStart(file)} className="cursor-pointer">
-                                                    <FileText className="mr-2 h-4 w-4" />
+                                                <DropdownMenuItem onClick={() => handleEditStart(file)}
+                                                                  className="cursor-pointer">
+                                                    <FileText className="mr-2 h-4 w-4"/>
                                                     <span>Rename</span>
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
                                                     className="text-destructive focus:text-destructive cursor-pointer"
                                                     onClick={() => onDeleteFile(file.id)}
                                                 >
-                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                    <Trash2 className="mr-2 h-4 w-4"/>
                                                     <span>Delete</span>
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>

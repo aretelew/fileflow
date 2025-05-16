@@ -1,5 +1,5 @@
 import React, {useState} from "react";
-import {signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail} from "firebase/auth";
+import {createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup} from "firebase/auth";
 import {auth} from "@/firebase.tsx";
 import {useNavigate} from "react-router-dom";
 
@@ -14,80 +14,110 @@ import {
 } from "@/components/ui/card";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
-import {SignupForm} from "@/components/signup-form.tsx";
-import { ForgotPasswordForm } from "@/components/forgot-password-form.tsx";
+import {z} from "zod";
+import { LoginForm } from "./login-form";
 
-export function LoginForm({
-                              className,
-                              ...props
-                          }: React.ComponentProps<"div">) {
+// Form validation schema
+const signupSchema = z.object({
+    email: z.string().email("Please enter a valid email address"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
+}).refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+});
+
+export function SignupForm({
+                               className,
+                               ...props
+                           }: React.ComponentProps<"div">) {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
     const [error, setError] = useState<string | null>(null);
+    const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
-    const [showSignup, setShowSignup] = useState(false);
-    const [showForgotPassword, setShowForgotPassword] = useState(false);
+    const [showLogin, setShowLogin] = useState(false);
 
-    if (showSignup) {
-        return <SignupForm />;
+    if (showLogin) {
+        return <LoginForm />;
     }
 
-    if (showForgotPassword) {
-        return <ForgotPasswordForm />;
-    }
+    const validateForm = () => {
+        try {
+            signupSchema.parse({email, password, confirmPassword});
+            setValidationErrors({});
+            return true;
+        } catch (err) {
+            if (err instanceof z.ZodError) {
+                const errors: Record<string, string> = {};
+                err.errors.forEach((error) => {
+                    if (error.path) {
+                        errors[error.path[0]] = error.message;
+                    }
+                });
+                setValidationErrors(errors);
+            }
+            return false;
+        }
+    };
 
-    const handleEmailPasswordLogin = async (event: React.FormEvent) => {
+    const handleEmailPasswordSignup = async (event: React.FormEvent) => {
         event.preventDefault();
         setError(null);
+
+        if (!validateForm()) {
+            return;
+        }
+
         setLoading(true);
         try {
-            await signInWithEmailAndPassword(auth, email, password);
-            console.log("User logged in with email/password");
+            await createUserWithEmailAndPassword(auth, email, password);
+            console.log("User registered with email/password");
             navigate("/dashboard");
         } catch (err: any) {
             setError(err.message);
-            console.error("Error logging in with email/password:", err);
+            console.error("Error registering with email/password:", err);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleGoogleLogin = async () => {
+    const handleGoogleSignup = async () => {
         setError(null);
         setLoading(true);
         const provider = new GoogleAuthProvider();
         try {
             await signInWithPopup(auth, provider);
-            console.log("User logged in with Google");
+            console.log("User registered with Google");
             navigate("/dashboard");
         } catch (err: any) {
             setError(err.message);
-            console.error("Error logging in with Google:", err);
+            console.error("Error registering with Google:", err);
         } finally {
             setLoading(false);
         }
     };
 
-
     return (
         <div className={cn("flex flex-col gap-6", className)} {...props}>
             <Card>
                 <CardHeader className="text-center">
-                    <CardTitle className="text-xl">Welcome back</CardTitle>
+                    <CardTitle className="text-xl">Create an account</CardTitle>
                     <CardDescription>
-                        Login with your Google account or use email.
+                        Sign up with Google account or use email.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     {error && <p className="text-red-500 text-center mb-4">{error}</p>}
-                    <form onSubmit={handleEmailPasswordLogin}>
+                    <form onSubmit={handleEmailPasswordSignup}>
                         <div className="grid gap-6">
                             <div className="flex flex-col gap-4">
                                 <Button
                                     variant="outline"
                                     className="w-full cursor-pointer"
-                                    onClick={handleGoogleLogin}
+                                    onClick={handleGoogleSignup}
                                     type="button"
                                     disabled={loading}
                                 >
@@ -98,7 +128,7 @@ export function LoginForm({
                                             fill="currentColor"
                                         />
                                     </svg>
-                                    Login with Google
+                                    Sign up with Google
                                 </Button>
                             </div>
                             <div
@@ -118,18 +148,14 @@ export function LoginForm({
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         disabled={loading}
+                                        className={validationErrors.email ? "border-red-500" : ""}
                                     />
+                                    {validationErrors.email && (
+                                        <p className="text-red-500 text-sm">{validationErrors.email}</p>
+                                    )}
                                 </div>
                                 <div className="grid gap-3">
-                                    <div className="flex items-center">
-                                        <Label htmlFor="password">Password</Label>
-                                        <a
-                                            onClick={() => setShowForgotPassword(true)}
-                                            className="ml-auto text-sm underline-offset-4 hover:underline cursor-pointer"
-                                        >
-                                            Forgot your password?
-                                        </a>
-                                    </div>
+                                    <Label htmlFor="password">Password</Label>
                                     <Input
                                         id="password"
                                         type="password"
@@ -137,17 +163,36 @@ export function LoginForm({
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         disabled={loading}
+                                        className={validationErrors.password ? "border-red-500" : ""}
                                     />
+                                    {validationErrors.password && (
+                                        <p className="text-red-500 text-sm">{validationErrors.password}</p>
+                                    )}
+                                </div>
+                                <div className="grid gap-3">
+                                    <Label htmlFor="confirm-password">Confirm Password</Label>
+                                    <Input
+                                        id="confirm-password"
+                                        type="password"
+                                        required
+                                        value={confirmPassword}
+                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                        disabled={loading}
+                                        className={validationErrors.confirmPassword ? "border-red-500" : ""}
+                                    />
+                                    {validationErrors.confirmPassword && (
+                                        <p className="text-red-500 text-sm">{validationErrors.confirmPassword}</p>
+                                    )}
                                 </div>
                                 <Button type="submit" className="w-full cursor-pointer" disabled={loading}>
-                                    {loading ? "Logging in..." : "Login"}
+                                    {loading ? "Creating account..." : "Create account"}
                                 </Button>
                             </div>
                             <div className="text-center text-sm">
-                                Don&apos;t have an account?{" "}
-                                <button onClick={() => setShowSignup(true)}
-                                   className="underline underline-offset-4 cursor-pointer">
-                                    Sign up
+                                Already have an account?{" "}
+                                <button onClick={() => setShowLogin(true)}
+                                    className="underline underline-offset-4 cursor-pointer">
+                                    Log in
                                 </button>
                             </div>
                         </div>
