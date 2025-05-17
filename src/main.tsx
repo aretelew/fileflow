@@ -10,14 +10,16 @@ import ProtectedRoute from "./components/protected-route.tsx"
 
 function App() {
     return (
-        <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={<Login />} />
-            <Route path="*" element={<NotFound />} />
-            <Route element={<ProtectedRoute />}>
-                <Route path="/dashboard" element={<Dashboard />} />
-            </Route>
-        </Routes>
+        <>
+            <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/" element={<Login />} />
+                <Route path="*" element={<NotFound />} />
+                <Route element={<ProtectedRoute />}>
+                    <Route path="/dashboard" element={<Dashboard />} />
+                </Route>
+            </Routes>
+        </>
     )
 }
 
