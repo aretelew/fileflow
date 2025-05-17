@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { X } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { storage, storageRef } from "@/firebase";
-import { uploadBytesResumable, getDownloadURL, deleteObject, listAll } from "firebase/storage";
+import { uploadBytesResumable, getDownloadURL, deleteObject, listAll, getMetadata } from "firebase/storage";
 import { useAuth } from "@/contexts/AuthContext.tsx";
 import {
     AlertDialog,
@@ -44,6 +44,7 @@ function Dashboard() {
     const [pendingFiles, setPendingFiles] = useState<FileItem[]>([]);
     const [showDuplicatePrompt, setShowDuplicatePrompt] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const [isFilesLoading, setIsFilesLoading] = useState(true); // Added loading state for file list
 
     // Helper function to get user-specific storage path
     const getUserStoragePath = useCallback(() => {
@@ -54,20 +55,22 @@ function Dashboard() {
     // Load files from Firebase Storage on component mount
     const loadFilesFromFirebase = useCallback(async () => {
         if (!user) return;
+        setIsFilesLoading(true);
         const userFilesPath = getUserStoragePath();
         const listRef = storageRef(storage, userFilesPath);
         try {
             const res = await listAll(listRef);
             const fetchedFilesPromises = res.items.map(async (itemRef) => {
                 const url = await getDownloadURL(itemRef);
+                const metadata = await getMetadata(itemRef);
                 return {
                     id: itemRef.name,
                     name: itemRef.name,
                     url: url,
                     fullPath: itemRef.fullPath,
-                    size: 0,
-                    type: '',
-                    uploadDate: new Date(),
+                    size: metadata.size,
+                    type: metadata.contentType || '',
+                    uploadDate: metadata.timeCreated ? new Date(metadata.timeCreated) : new Date(),
                 };
             });
             const fetchedFiles = await Promise.all(fetchedFilesPromises);
@@ -75,13 +78,19 @@ function Dashboard() {
         } catch (error) {
             console.error("Error loading files from Firebase Storage:", error);
             toast.error("Error loading files from Firebase.");
+        } finally {
+            setIsFilesLoading(false); // Set loading to false
         }
     }, [user, getUserStoragePath]);
 
 
     useEffect(() => {
         if (user) {
+            // setIsFilesLoading(true); // Already set at the beginning of loadFilesFromFirebase
             loadFilesFromFirebase();
+        } else {
+            setFiles([]); // Clear files if no user
+            setIsFilesLoading(false); // If no user, not loading
         }
     }, [user, loadFilesFromFirebase]);
 
@@ -393,6 +402,7 @@ function Dashboard() {
                                 <FileList
                                     files={files}
                                     onDeleteFile={handleDeleteFile}
+                                    isLoading={isFilesLoading} // Pass isLoading prop
                                 />
                             </section>
                         </div>

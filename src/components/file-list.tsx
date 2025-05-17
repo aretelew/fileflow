@@ -18,14 +18,16 @@ import {
 } from "lucide-react"
 import {Badge} from "@/components/ui/badge"
 import {Card, CardContent} from "@/components/ui/card"
+import {Skeleton} from "@/components/ui/skeleton"
 
 interface FileListProps {
     files: FileItem[]
     onDeleteFile: (id: string) => void
     onEditFile?: (id: string, newName: string) => void
+    isLoading?: boolean
 }
 
-export function FileList({files, onDeleteFile, onEditFile}: FileListProps) {
+export function FileList({files, onDeleteFile, onEditFile, isLoading}: FileListProps) {
     const [searchTerm, setSearchTerm] = useState("")
     const [sortField, setSortField] = useState<keyof FileItem>("uploadDate")
     const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
@@ -138,7 +140,34 @@ export function FileList({files, onDeleteFile, onEditFile}: FileListProps) {
                 </div>
             </div>
 
-            {filteredAndSortedFiles.length === 0 ? (
+            {isLoading ? (
+                <div className="rounded-md border max-h-[50vh] overflow-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-[40px]"></TableHead>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Size</TableHead>
+                                <TableHead>Uploaded</TableHead>
+                                <TableHead className="w-[50px]"></TableHead>
+                                <TableHead className="w-[50px]"></TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {Array.from({ length: 5 }).map((_, index) => (
+                                <TableRow key={`skeleton-${index}`}>
+                                    <TableCell className="p-2"><Skeleton className="h-5 w-5 rounded" /></TableCell>
+                                    <TableCell><Skeleton className="h-4 w-[150px] rounded" /></TableCell>
+                                    <TableCell><Skeleton className="h-4 w-[60px] rounded" /></TableCell>
+                                    <TableCell><Skeleton className="h-4 w-[100px] rounded" /></TableCell>
+                                    <TableCell><Skeleton className="h-8 w-8 rounded" /></TableCell>
+                                    <TableCell><Skeleton className="h-8 w-8 rounded" /></TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            ) : filteredAndSortedFiles.length === 0 ? (
                 <Card>
                     <CardContent className="flex flex-col items-center justify-center py-10 text-center">
                         <FileIcon className="h-10 w-10 text-muted-foreground mb-3"/>
@@ -158,14 +187,6 @@ export function FileList({files, onDeleteFile, onEditFile}: FileListProps) {
                                     <div className="flex items-center gap-1">
                                         Name
                                         {sortField === "name" &&
-                                            (sortDirection === "asc" ? <SortAsc className="h-4 w-4"/> :
-                                                <SortDesc className="h-4 w-4"/>)}
-                                    </div>
-                                </TableHead>
-                                <TableHead className="cursor-pointer" onClick={() => handleSort("type")}>
-                                    <div className="flex items-center gap-1">
-                                        Type
-                                        {sortField === "type" &&
                                             (sortDirection === "asc" ? <SortAsc className="h-4 w-4"/> :
                                                 <SortDesc className="h-4 w-4"/>)}
                                     </div>
@@ -207,7 +228,6 @@ export function FileList({files, onDeleteFile, onEditFile}: FileListProps) {
                                             file.name
                                         )}
                                     </TableCell>
-                                    <TableCell>{getFileTypeBadge(file.type)}</TableCell>
                                     <TableCell>{formatFileSize(file.size)}</TableCell>
                                     <TableCell>{formatDate(file.uploadDate)}</TableCell>
                                     <TableCell>
