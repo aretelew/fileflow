@@ -1,5 +1,5 @@
 import React, {createContext, useContext, useState, useEffect, ReactNode} from 'react';
-import {User as FirebaseUser, onAuthStateChanged, signOut} from 'firebase/auth';
+import {User as FirebaseUser, onAuthStateChanged, signOut, updateProfile, sendPasswordResetEmail, reauthenticateWithCredential, EmailAuthProvider, deleteUser } from 'firebase/auth';
 import {auth} from '@/firebase.tsx';
 
 interface User {
@@ -20,6 +20,9 @@ interface AuthState {
 interface AuthContextType extends AuthState {
     handleFirebaseUser: (fbUser: FirebaseUser | null) => Promise<void>;
     logout: () => Promise<void>;
+    updateUserProfile: (updates: { displayName?: string; photoURL?: string }) => Promise<void>;
+    sendPasswordReset: (email: string) => Promise<void>;
+    reauthenticateAndDeleteUser: (password: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -128,7 +131,47 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
             await signOut(auth);
         } catch (error) {
             console.error("Error signing out:", error);
-            setAuthState(prev => ({...prev, isLoading: false})); // Ensure loading is false even on error
+            setAuthState(prev => ({...prev, isLoading: false}));
+        }
+    };
+
+    const updateUserProfile = async (updates: { displayName?: string; photoURL?: string }) => {
+        if (!auth.currentUser) throw new Error("User not authenticated");
+        try {
+            await updateProfile(auth.currentUser, updates);
+            if (updates.displayName) {
+                setAuthState(prev => prev.user ? {...prev, user: {...prev.user, displayName: updates.displayName || prev.user.displayName}} : prev);
+            }
+            if (updates.photoURL) {
+                setAuthState(prev => prev.user ? {...prev, user: {...prev.user, photoURL: updates.photoURL || prev.user.photoURL}} : prev);
+            }
+            console.log("Profile update successful (placeholder)", updates);
+        } catch (error) {
+            console.error("Error updating profile (placeholder):", error);
+            throw error;
+        }
+    };
+
+    const sendPasswordReset = async (email: string) => {
+        try {
+            await sendPasswordResetEmail(auth, email);
+            console.log("Password reset email sent (placeholder) to", email);
+        } catch (error) {
+            console.error("Error sending password reset email (placeholder):", error);
+            throw error;
+        }
+    };
+
+    const reauthenticateAndDeleteUser = async (password: string) => {
+        if (!auth.currentUser || !auth.currentUser.email) throw new Error("User not authenticated or email not available");
+        try {
+            const credential = EmailAuthProvider.credential(auth.currentUser.email, password);
+            await reauthenticateWithCredential(auth.currentUser, credential);
+            await deleteUser(auth.currentUser);
+            console.log("User reauthenticated and deleted (placeholder)");
+        } catch (error) {
+            console.error("Error reauthenticating or deleting user (placeholder):", error);
+            throw error;
         }
     };
 
@@ -136,6 +179,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
         ...authState,
         handleFirebaseUser,
         logout,
+        updateUserProfile,
+        sendPasswordReset,
+        reauthenticateAndDeleteUser,
     };
 
     return (

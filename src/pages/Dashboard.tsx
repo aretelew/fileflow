@@ -43,6 +43,7 @@ function Dashboard() {
     const [files, setFiles] = useState<FileItem[]>([]);
     const [pendingFiles, setPendingFiles] = useState<FileItem[]>([]);
     const [showDuplicatePrompt, setShowDuplicatePrompt] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
 
     // Helper function to get user-specific storage path
     const getUserStoragePath = useCallback(() => {
@@ -91,80 +92,84 @@ function Dashboard() {
     }, []);
 
 
-    const actualFileUpload = (fileItem: FileItem, newFileName: string) => {
-        if (!fileItem.file || !user) {
-            console.error("File or user not available for upload", fileItem);
-            const errorMessage = "File or user not available for upload.";
-            setPendingFiles(prev =>
-                prev.map(f =>
-                    f.id === fileItem.id
-                        ? { ...f, progress: 0, error: "File or user not available" }
-                        : f
-                )
-            );
-            toast.error(errorMessage, { description: fileItem.name });
-            return;
-        }
-
-        const userFilesPath = getUserStoragePath();
-
-        const fileRef = storageRef(storage, `${userFilesPath}/${newFileName}`);
-        const uploadTask = uploadBytesResumable(fileRef, fileItem.file);
-
-        uploadTask.on(
-            "state_changed",
-            (snapshot) => {
-                const progress = Math.round(
-                    (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-                );
+    const actualFileUpload = useCallback((fileItem: FileItem, newFileName: string): Promise<void> => {
+        return new Promise((resolve, reject) => {
+            if (!fileItem.file || !user) {
+                console.error("File or user not available for upload", fileItem);
+                const errorMessage = "File or user not available for upload.";
                 setPendingFiles(prev =>
                     prev.map(f =>
-                        f.id === fileItem.id ? { ...f, progress: progress } : f
+                        f.id === fileItem.id
+                            ? { ...f, progress: 0, error: "File or user not available" }
+                            : f
                     )
                 );
-            },
-            (error) => {
-                console.error("Upload failed for", fileItem.name, error);
-                setPendingFiles(prev =>
-                    prev.map(f =>
-                        f.id === fileItem.id ? { ...f, progress: 0, error: error.message } : f
-                    )
-                );
-                toast.error(`Upload failed for ${fileItem.name}`, { description: error.message });
-            },
-            async () => {
-                try {
-                    const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                    const newUploadedFile: FileItem = {
-                        ...fileItem,
-                        name: newFileName,
-                        url: downloadURL,
-                        fullPath: uploadTask.snapshot.ref.fullPath,
-                        progress: undefined,
-                        file: undefined,
-                        uploadDate: new Date(),
-                    };
-                    setFiles(prev => [newUploadedFile, ...prev]);
-                    setPendingFiles(prev => prev.filter(f => f.id !== fileItem.id));
-                    toast.success(`Successfully uploaded ${newFileName}`);
-                } catch (error: any) {
-                    console.error("Error getting download URL for", fileItem.name, error);
-                    const errorMessage = "Failed to get download URL";
+                toast.error(errorMessage, { description: fileItem.name });
+                reject(new Error(errorMessage));
+                return;
+            }
+
+            const userFilesPath = getUserStoragePath();
+
+            const fileRef = storageRef(storage, `${userFilesPath}/${newFileName}`);
+            const uploadTask = uploadBytesResumable(fileRef, fileItem.file);
+
+            uploadTask.on(
+                "state_changed",
+                (snapshot) => {
+                    const progress = Math.round(
+                        (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+                    );
                     setPendingFiles(prev =>
                         prev.map(f =>
-                            f.id === fileItem.id ? { ...f, progress: 0, error: errorMessage } : f
+                            f.id === fileItem.id ? { ...f, progress: progress } : f
                         )
                     );
-                    toast.error(`Error for ${fileItem.name}`, { description: errorMessage });
+                },
+                (error) => {
+                    console.error("Upload failed for", fileItem.name, error);
+                    setPendingFiles(prev =>
+                        prev.map(f =>
+                            f.id === fileItem.id ? { ...f, progress: 0, error: error.message } : f
+                        )
+                    );
+                    toast.error(`Upload failed for ${fileItem.name}`, { description: error.message });
+                    reject(error);
+                },
+                async () => {
+                    try {
+                        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                        const newUploadedFile: FileItem = {
+                            ...fileItem,
+                            name: newFileName,
+                            url: downloadURL,
+                            fullPath: uploadTask.snapshot.ref.fullPath,
+                            progress: undefined,
+                            file: undefined,
+                            uploadDate: new Date(),
+                        };
+                        setFiles(prev => [newUploadedFile, ...prev]);
+                        setPendingFiles(prev => prev.filter(f => f.id !== fileItem.id));
+                        toast.success(`Successfully uploaded ${newFileName}`);
+                        resolve();
+                    } catch (error: any) {
+                        console.error("Error getting download URL for", fileItem.name, error);
+                        const errorMessage = "Failed to get download URL";
+                        setPendingFiles(prev =>
+                            prev.map(f =>
+                                f.id === fileItem.id ? { ...f, progress: 0, error: errorMessage } : f
+                            )
+                        );
+                        toast.error(`Error for ${fileItem.name}`, { description: errorMessage });
+                        reject(error);
+                    }
                 }
-            }
-        );
-        return uploadTask;
-    };
+            );
+        });
+    }, [user, getUserStoragePath, setFiles, setPendingFiles]);
 
-    const processAndUploadFiles = useCallback((filesToProcess: FileItem[]) => {
+    const processAndUploadFiles = useCallback(async (filesToProcess: FileItem[]) => {
         if (!user) {
-            // alert("You must be logged in to upload files.");
             toast.error("Authentication Error", { description: "You must be logged in to upload files." });
             return;
         }
@@ -209,17 +214,40 @@ function Dashboard() {
             namesUsedInThisBatch.push(finalName);
         }
 
-        newFileItemsToUpload.forEach(({ item, finalName }) => {
-            if (item.file) {
-                actualFileUpload(item, finalName);
-            }
+        const uploadableItems = newFileItemsToUpload.filter(({ item }) => item.file);
+
+        if (uploadableItems.length === 0) {
+            return; // No valid files to upload
+        }
+
+        setIsUploading(true);
+
+        const uploadPromises = uploadableItems.map(({ item, finalName }) => {
+            return actualFileUpload(item, finalName)
+                .catch(error => {
+                    // Error is handled within actualFileUpload for UI (toast, state update).
+                    // This catch ensures that a rejection from one actualFileUpload call
+                    // doesn't prevent Promise.allSettled from processing other promises.
+                    console.warn(`Upload promise for ${finalName} handled (likely rejected):`, error.message);
+                    // We return a resolved promise here so allSettled sees it as "settled".
+                    // The individual file's error state is already managed.
+                    return Promise.resolve();
+                });
         });
-    }, [user, files, getUserStoragePath, actualFileUpload]);
+
+        try {
+            await Promise.allSettled(uploadPromises);
+        } catch (e) {
+            // This catch is for unexpected errors in Promise.allSettled logic itself, not for individual upload failures.
+            console.error("Critical error during Promise.allSettled in processAndUploadFiles:", e);
+        } finally {
+            setIsUploading(false);
+        }
+    }, [user, files, getUserStoragePath, actualFileUpload, setPendingFiles, setIsUploading]);
 
 
     const handleUploadPending = useCallback(() => {
         if (!user) {
-            // alert("You must be logged in to upload files.");
             toast.error("Authentication Error", { description: "You must be logged in to upload files." });
             return;
         }
@@ -338,14 +366,15 @@ function Dashboard() {
                                             <div className="flex flex-row gap-2 w-full">
                                                 <Button
                                                     className="cursor-pointer w-[60%]"
-                                                    onClick={handleUploadPending} // This now triggers actual Firebase uploads
+                                                    onClick={handleUploadPending}
+                                                    disabled={isUploading}
                                                 >
                                                     Upload {pendingFiles.length} File(s)
                                                 </Button>
                                                 <Button
                                                     className="cursor-pointer w-[40%]"
                                                     variant="outline"
-                                                    onClick={() => setPendingFiles([])} // Clear pending files
+                                                    onClick={() => setPendingFiles([])}
                                                 >
                                                     Cancel
                                                 </Button>

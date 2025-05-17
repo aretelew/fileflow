@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import {SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar} from "@/components/ui/sidebar"
 import {useAuth} from "@/contexts/AuthContext.tsx";
-import { auth } from "@/lib/firebase.tsx";
+import { auth } from "@/firebase";
 
 
 export function NavUser({user}: {

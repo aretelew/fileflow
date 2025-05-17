@@ -2,6 +2,7 @@ import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
 import "./index.css"
 import Dashboard from "./pages/Dashboard.tsx"
+import SettingsPage from "./pages/Settings.tsx"
 import Login from "@/pages/Login.tsx"
 import NotFound from "@/pages/NotFound.tsx" // Import the new NotFound page
 import { AuthProvider } from "./contexts/AuthContext"
@@ -17,6 +18,7 @@ function App() {
                 <Route path="*" element={<NotFound />} />
                 <Route element={<ProtectedRoute />}>
                     <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/settings" element={<SettingsPage />} />
                 </Route>
             </Routes>
         </>

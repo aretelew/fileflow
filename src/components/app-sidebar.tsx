@@ -51,7 +51,7 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton asChild>
-                            <a href={"#"}>
+                            <a href={"/settings"}>
                                 <Settings/>
                                 <span>Settings</span>
                             </a>
